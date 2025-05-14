@@ -1,0 +1,72 @@
+services:
+  frontend:
+    build: ./frontend
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - frontend_backend
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.1
+    container_name: keycloak
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=mysql
+      - KC_DB_URL=jdbc:mysql://mysql:3306/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=keycloak
+    command: start-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    volumes:
+    - keycloak_data:/opt/keycloak/data
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      - MYSQL_DATABASE=keycloak
+      - MYSQL_USER=keycloak
+      - MYSQL_PASSWORD=keycloak
+      - MYSQL_ROOT_PASSWORD=root_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password
+
+
+  backend:
+    build: ./backend
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 5000 
+
+    ports:
+      - "5000:5000"
+
+    environment:
+    - KEYCLOAK_URL=http://keycloak:8080
+    - KEYCLOAK_REALM=TwójKwadrat
+    - KEYCLOAK_CLIENT_ID=TwójKwadrat-app
+    depends_on:
+      - keycloak
+    networks:
+      - frontend_backend
+
+    
+volumes:
+  mysql_data:
+  keycloak_data:
+  frontend_node_modules:
+    
+
+networks:
+  frontend_backend:
+    driver: bridge 
