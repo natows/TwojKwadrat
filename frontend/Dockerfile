@@ -1,12 +1,16 @@
 FROM node:18-alpine
 
-ENV NEXT_DISABLE_TURBOPACK=true
-
 WORKDIR /app
 
-COPY . .
+ARG NODE_ENV=development
+ENV NODE_ENV=${NODE_ENV}
+ENV NEXT_DISABLE_TURBOPACK=true
+ENV WATCHPACK_POLLING=true
+ENV CHOKIDAR_USEPOLLING=true
 
-RUN npm install
+COPY package.json package-lock.json* ./
+
+RUN npm ci
 
 EXPOSE 3000
 

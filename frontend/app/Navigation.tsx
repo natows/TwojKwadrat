@@ -7,6 +7,10 @@ export default function Navigation() {
         keycloak.logout();
     }
 
+
+
+
+
     return (
         <nav className="flex items-center justify-between p-4 bg-gray-800 text-white">
             <div className="text-lg font-bold">Twoj Kwadrat</div>
@@ -26,8 +30,13 @@ export default function Navigation() {
                 }
 
                 <li>
-                    <a href="/contact" className="hover:text-gray-400">cos tam</a>
+                    <a href="/contact" className="hover:text-gray-400">Kontakt</a>
                 </li>
+                {keycloak.authenticated && keycloak.hasRealmRole('admin') && (
+                <li>
+                    <a href="/admin" className="hover:text-gray-400">Panel admina</a>
+                </li>
+                )}
             </ul>
         </nav>
     );

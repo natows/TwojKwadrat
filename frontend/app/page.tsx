@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 interface Room {
   id: number;
   title: string;
-  content: string;
+  price: number;
 }
 export default function Home() {
   const [ rooms, setRooms ] = useState<Room[]>([]);
@@ -30,7 +30,7 @@ export default function Home() {
         {rooms.map((room, index) => (
           <li key={index} className="p-4 border-b">
             <h2 className="text-2xl font-semibold">{room.title}</h2>
-            <p>{room.content}</p>
+            <p>{room.id}</p>
           </li>
         ))}
       </ul>
