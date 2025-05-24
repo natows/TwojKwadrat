@@ -1,10 +1,14 @@
-FROM python:3.11-slim AS builder
+FROM --platform=${BUILDPLATFORM:-linux/amd64} python:3.11-slim AS builder
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --target=/install -r requirements.txt
 
-FROM python:3.11-slim
+FROM --platform=${TARGETPLATFORM:-linux/amd64} python:3.11-slim
 WORKDIR /app
+
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
+
 COPY --from=builder /install /usr/local/lib/python3.11/site-packages/
 COPY . .
 EXPOSE 5000
