@@ -9,12 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/react-fontawesome": "^0.2.2",
     "@react-keycloak/web": "^3.4.0",
+    "formik": "^2.4.6",
     "keycloak-js": "^26.2.0",
     "next": "15.3.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-keycloak-provider": "^1.0.9"
+    "react-keycloak-provider": "^1.0.9",
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

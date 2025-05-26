@@ -7,7 +7,6 @@ app = FastAPI()
 
 print("Including user router:", user.router)
 
-# Dodaj middleware CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://frontend:3000"],
@@ -16,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Prawidłowo zarejestruj router z prefixem
+
 app.include_router(user.router, prefix="/api/users")
 
 @app.get("/")
