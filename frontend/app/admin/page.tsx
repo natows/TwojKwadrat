@@ -34,7 +34,7 @@ export default function AdminPanel() {
                 
                 if (!hasRole) {
                     console.log("Brak uprawnień administratora, przekierowuję");
-                    router.push('/access-denied');
+                    router.push('/');
                     return;
                 }
                 

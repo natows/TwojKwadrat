@@ -10,6 +10,7 @@ export default function KeycloakProviderWrapper({ children }: { children: ReactN
       authClient={keycloak}
       initOptions={{
         onLoad: 'check-sso',
+        pkceMethod: 'S256',
         checkLoginIframe: false,
       }}
     >

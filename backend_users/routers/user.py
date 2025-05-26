@@ -49,31 +49,76 @@ def require_admin_user(token: dict = Depends(verify_token)):
 
 router =  APIRouter()
 
-mydb = mysql.connector.connect(
-  host="mysql",
-  user="keycloak",
-  password="keycloak",
-  database="keycloak"
-)
+from mysql.connector import pooling
 
+config = {
+    'user': 'keycloak',
+    'password': 'keycloak',
+    'host': 'mysql',
+    'database': 'keycloak',
+    'pool_name': 'keycloak_pool',
+    'pool_size': 5
+}
 
-mycursor = mydb.cursor()
-
-
+def get_db_connection():
+    try:
+        cnx_pool = pooling.MySQLConnectionPool(**config)
+        return cnx_pool.get_connection()
+    except mysql.connector.Error as err:
+        print(f"Database connection error: {err}")
+        raise HTTPException(status_code=500, detail="Database connection failed")
 
 @router.get('/')
 async def get_users(user=Depends(require_admin_user)):
     try:
+        mydb = get_db_connection()
+        mycursor = mydb.cursor()
+        
         mycursor.execute("SELECT * FROM USER_ENTITY")
         results = mycursor.fetchall()
 
         users = [
-            {"id": row[0], "username": row[9], "email": row[1], "first_name": row[6], "last_name": row[7], "realm_id": row[4]} #nie wiem czy realm id nie bedzie potrzebne ale to chyba z tokena lepiej brac
+            {"id": row[0], "username": row[9], "email": row[1], "first_name": row[6], "last_name": row[7], "realm_id": row[4]}
             for row in results
         ]
 
+        mycursor.close()
+        mydb.close()
 
         return users
     except mysql.connector.Error as err:
-        return {"error": str(err)}
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
 
+
+@router.get('/{user_id}')
+async def get_user(user_id: str, user=Depends(verify_token)):
+    try:
+        mydb = get_db_connection()
+        mycursor = mydb.cursor()
+        
+        mycursor.execute("SELECT * FROM USER_ENTITY WHERE ID = %s", (user_id,))
+        result = mycursor.fetchone()
+
+        print(f"Query result: {result}")
+
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user_data = {
+            "id": result[0],
+            "username": result[9],
+            "email": result[1],
+            "first_name": result[6],
+            "last_name": result[7]
+        }
+
+        print(f"Returning user data: {user_data}") 
+
+        
+
+        mycursor.close()
+        mydb.close()
+
+        return user_data
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
