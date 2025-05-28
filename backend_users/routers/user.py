@@ -31,16 +31,13 @@ def verify_token(token: str = Depends(oauth2_scheme)):
             algorithms=["RS256"],
             audience=KEYCLOAK_CLIENT_ID
         )
-        print(f"Decoded token: {decoded_token}")  # Debug decoded token
+        print(f"Decoded token: {decoded_token}")  
         return decoded_token
     except Exception as e:
-        print(f"Token verification error: {str(e)}")  # Debug error
+        print(f"Token verification error: {str(e)}")  
         raise HTTPException(status_code=401, detail=f"Token invalid: {str(e)}")
     
 def require_admin_user(token: dict = Depends(verify_token)):
-    # if "admin" not in token["realm_access"]["roles"]:
-    #     raise HTTPException(status_code=403, detail="Admin role required")
-    # return token
     roles = token.get("realm_access", {}).get("roles", [])
     print(f"User roles: {roles}")  # Debug roles
     if "admin" not in roles:
@@ -51,18 +48,19 @@ router =  APIRouter()
 
 from mysql.connector import pooling
 
-config = {
-    'user': 'keycloak',
-    'password': 'keycloak',
-    'host': 'mysql',
-    'database': 'keycloak',
-    'pool_name': 'keycloak_pool',
-    'pool_size': 5
+DB_CONFIG = {
+    'user': os.getenv('DB_USER', 'keycloak'),
+    'password': os.getenv('DB_PASSWORD', 'keycloak'),
+    'host': os.getenv('DB_HOST', 'mysql'),
+    'database': os.getenv('DB_NAME', 'keycloak'),
+    'port': int(os.getenv('DB_PORT', '3306')),
+    'pool_name': os.getenv('DB_POOL_NAME', 'keycloak_pool'),
+    'pool_size': int(os.getenv('DB_POOL_SIZE', '5'))
 }
 
 def get_db_connection():
     try:
-        cnx_pool = pooling.MySQLConnectionPool(**config)
+        cnx_pool = pooling.MySQLConnectionPool(**DB_CONFIG)
         return cnx_pool.get_connection()
     except mysql.connector.Error as err:
         print(f"Database connection error: {err}")

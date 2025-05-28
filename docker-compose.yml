@@ -5,8 +5,8 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules 
-      - /app/.next        
+      - /app/node_modules
+      - /app/.next       
     environment:
       - NODE_ENV=development
       - WATCHPACK_POLLING=true
@@ -42,12 +42,8 @@ services:
       - keycloak_data:/opt/keycloak/data
     networks:
       - db_backend
-    # healthcheck:
-    #   test: ["CMD", "java", "-jar", "/opt/keycloak/lib/quarkus-run.jar", "org.keycloak.services.resources.KeycloakApplication", "http://localhost:8080/realms/master"]
-    #   interval: 15s
-    #   timeout: 10s
-    #   retries: 3
-    #   start_period: 30s
+
+
   mysql:
     container_name: mysql
     image: mysql:8.0
@@ -73,8 +69,8 @@ services:
 
 
   py-backend:
-    build: ./backend_users
-    command: python -m uvicorn main:app --host 0.0.0.0 --port 5000 
+    image: nowsiejko/twojkwadrat-py-backend:latest
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 5000 --reload
 
     ports:
       - "5000:5000"
@@ -83,6 +79,13 @@ services:
     - KEYCLOAK_URL=http://keycloak:8080
     - KEYCLOAK_REALM=TwojKwadrat
     - KEYCLOAK_CLIENT_ID=TwojKwadrat-app
+    - DB_HOST=mysql
+    - DB_PORT=3306
+    - DB_USER=keycloak
+    - DB_PASSWORD=${MYSQL_PASSWORD}
+    - DB_NAME=keycloak
+    - DB_POOL_NAME=keycloak_pool
+    - DB_POOL_SIZE=5
     depends_on:
       keycloak:
         condition: service_started
@@ -99,7 +102,7 @@ services:
 
 
   go-backend:
-    build: ./backend_posts
+    image: nowsiejko/twojkwadrat-go-backend:latest
     command: ./main
     ports:
       - "5001:5001"
