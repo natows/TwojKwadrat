@@ -2,6 +2,7 @@ FROM --platform=${BUILDPLATFORM:-linux/amd64} node:18-alpine
 
 WORKDIR /app
 
+
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
 ARG NODE_ENV=development
@@ -13,6 +14,8 @@ ENV CHOKIDAR_USEPOLLING=true
 COPY package.json package-lock.json* ./
 
 RUN npm ci
+
+COPY . .
 
 EXPOSE 3000
 

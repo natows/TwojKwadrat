@@ -93,10 +93,6 @@ export default function CreatePostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-
-  useEffect(() => {
-    router.push("/")
-  })
   const handleSubmit = async (
     values: PostFormValues, 
     { setSubmitting, resetForm }: FormikHelpers<PostFormValues>
