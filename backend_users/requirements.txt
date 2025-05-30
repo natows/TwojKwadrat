@@ -1,6 +1,6 @@
-fastapi
-uvicorn[standard]
-mysql-connector-python
-python-keycloak
-python-jose[cryptography]
-requests
+fastapi==0.104.1
+uvicorn==0.24.0
+mysql-connector-python==8.2.0
+python-keycloak==3.7.0
+python-jose==3.3.0
+requests==2.31.0

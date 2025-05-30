@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     if (dev) {
       config.watchOptions = {
         poll: 1000,
-        aggregateTimeout: 300,
+        aggregateTimeout: 200,
         ignored: ['**/node_modules', '**/.git', '**/.next'],
       };
     }

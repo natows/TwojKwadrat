@@ -15,6 +15,9 @@ import (
 
     "github.com/golang-jwt/jwt/v4" 
     _ "github.com/go-sql-driver/mysql"
+
+    "time"
+    amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Post struct {
@@ -49,13 +52,12 @@ type KeycloakClaims struct {
 }
 
 
-//weryfikacje tokenow w api zrob
-// -- dzielnica sama sie uzupelni na froncie (polaczenie jakos z google maps)
-// -- author do polaczenia z keycloakiem
 var db *sql.DB
 var publicKey *rsa.PublicKey
 var publicKeyMutex sync.Mutex
 var publicKeyInitialized bool
+var rabbitMQConn *amqp.Connection
+var rabbitMQChannel *amqp.Channel
 
 func initDB() {
 	dbHost := os.Getenv("DB_HOST")
@@ -78,6 +80,44 @@ func initDB() {
 	}
 	fmt.Println("Connected to the database successfully")
 
+}
+
+func initRabbitMQ() error {
+    rabbitmqHost := os.Getenv("RABBITMQ_HOST")
+    if rabbitmqHost == "" {
+        rabbitmqHost = "rabbitmq"
+    }
+    
+    var err error
+    for i := 0; i < 5; i++ {
+        rabbitMQConn, err = amqp.Dial(fmt.Sprintf("amqp://guest:guest@%s:5672/", rabbitmqHost))
+        if err == nil {
+            break
+        }
+        fmt.Printf("Failed to connect to RabbitMQ: %v, retrying in 5 seconds...\n", err)
+        time.Sleep(5 * time.Second)
+    }
+    
+    if err != nil {
+        return err
+    }
+    fmt.Println("Connected to RabbitMQ successfully")
+    
+    rabbitMQChannel, err = rabbitMQConn.Channel()
+    if err != nil {
+        return err
+    }
+    
+    _, err = rabbitMQChannel.QueueDeclare(
+        "notifications", 
+        true,           
+        false,          
+        false,          
+        false,         
+        nil,            
+    )
+    
+    return err
 }
 
 func getKeycloakPublicKey() (*rsa.PublicKey, error) {
@@ -401,31 +441,29 @@ func getPostByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func postPost(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+    w.Header().Set("Content-Type", "application/json")
 
-	userID := r.Header.Get("X-User-ID")
+    userID := r.Header.Get("X-User-ID")
     username := r.Header.Get("X-Username")
     
     if userID == "" {
         http.Error(w, "User not authenticated", http.StatusUnauthorized)
         return
     }
-	
+    
+    var post Post
+    err := json.NewDecoder(r.Body).Decode(&post)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
 
-	var post Post
-	err := json.NewDecoder(r.Body).Decode(&post)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+    post.AuthorID = userID
+    post.AuthorUsername = username
 
-	post.AuthorID = userID
-	post.AuthorUsername = username
+    fmt.Printf("Received post data: %+v\n", post)
 
-
-	fmt.Printf("Received post data: %+v\n", post)
-
-	if post.Title == "" || post.Price == 0 || post.Size == 0 || 
+    if post.Title == "" || post.Price == 0 || post.Size == 0 || 
        post.Street == "" || post.City == "" || post.District == "" ||
        post.Description == "" || post.AvailableFrom == "" ||
        post.Email == "" || post.Phone == "" || post.MinRentalPeriod < 1 {
@@ -434,10 +472,7 @@ func postPost(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-
-	
-
-	query := `INSERT INTO posts (
+    query := `INSERT INTO posts (
             title, price, size, street, city, district, 
             description, available_from, min_rental_period, amenities, 
             roommates, email, phone, author_id, author_username
@@ -463,33 +498,79 @@ func postPost(w http.ResponseWriter, r *http.Request) {
         post.AuthorID,     
         post.AuthorUsername,
     )
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
 
-	postID, err := result.LastInsertId()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+    postID, err := result.LastInsertId()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
 
-	fmt.Printf("Post created successfully with ID: %d\n", postID)
+    fmt.Printf("Post created successfully with ID: %d\n", postID)
 
-
-	response := struct {
-		ID int64 `json:"id"`
-		Message string `json:"message"`
-	}{
-		ID: postID,
-		Message: "Post created successfully",
-	}
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
-} 
+    if postID > 0 && rabbitMQChannel != nil {
+    // Przygotuj dane powiadomienia
+        notification := map[string]interface{}{
+            "event": "post_created",
+            "post_id": postID,
+            "title": post.Title,
+            "author": post.AuthorUsername,
+            "city": post.City,
+            "price": post.Price,
+            "timestamp": time.Now().Format(time.RFC3339),
+        }
+        
+        // Serializuj do JSON
+        notificationJson, err := json.Marshal(notification)
+        if err == nil {
+            err = rabbitMQChannel.Publish(
+                "",             
+                "notifications", 
+                false,         
+                false,          
+                amqp.Publishing{
+                    DeliveryMode: amqp.Persistent,
+                    ContentType: "application/json",
+                    Body:        notificationJson,
+                },
+            )
+            
+            if err != nil {
+                fmt.Printf("Error sending notification: %v\n", err)
+            } else {
+                fmt.Printf("Notification sent for post %d\n", postID)
+            }
+        }else{
+            fmt.Printf("Error serializing notification: %v\n", err)
+        }
+    }
+        response := struct {
+        ID int64 `json:"id"`
+        Message string `json:"message"`
+    }{
+        ID: postID,
+        Message: "Post created successfully",
+    }
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(response)
+}
 
 func main() {
+    fmt.Println("=== RUNNING UPDATED CODE VERSION WITH RABBITMQ FIX ===")
+
 	initDB()
+    err := initRabbitMQ()
+    if err != nil {
+        fmt.Printf("Warning: Could not connect to RabbitMQ: %v\n", err)
+        fmt.Println("Continuing without notifications...")
+    } else {
+        fmt.Println("Connected to RabbitMQ successfully")
+        defer rabbitMQConn.Close()
+        defer rabbitMQChannel.Close()
+    }
 
 	http.HandleFunc("/api/get/", getPostByID)
 	http.HandleFunc("/api/posts/", getPosts) 
@@ -497,7 +578,7 @@ func main() {
 	http.HandleFunc("/health", healthCheck)
 
 	fmt.Println("Server is running on port 5001")
-	err := http.ListenAndServe(":5001", nil)
+	err = http.ListenAndServe(":5001", nil)
 	if err != nil {
 		fmt.Printf("Error starting server: %s\n", err)
 	}
