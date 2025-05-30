@@ -1,6 +1,7 @@
 services:
   frontend:
-    build: ./frontend
+    image: nowsiejko/twojkwadrat-frontend:latest
+    restart: unless-stopped 
     ports:
       - "3000:3000"
     volumes:
@@ -48,7 +49,7 @@ services:
     container_name: mysql
     image: mysql:8.0
     environment:
-      - MYSQL_DATABASE=keycloak
+      # - MYSQL_DATABASE=
       - MYSQL_USER=keycloak
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
@@ -65,11 +66,12 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$MYSQL_ROOT_PASSWORD"]
       interval: 5s
       timeout: 3s
-      retries: 3
+      retries: 2
 
 
   py-backend:
     image: nowsiejko/twojkwadrat-py-backend:latest
+    restart: unless-stopped
     command: python -m uvicorn main:app --host 0.0.0.0 --port 5000 --reload
 
     ports:
@@ -98,11 +100,12 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
       interval: 5s
       timeout: 3s
-      retries: 3
+      retries: 2
 
 
   go-backend:
     image: nowsiejko/twojkwadrat-go-backend:latest
+    restart: unless-stopped
     command: ./main
     ports:
       - "5001:5001"
@@ -115,25 +118,58 @@ services:
       - DB_USER=root
       - DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - DB_NAME=posts
+      - RABBITMQ_HOST=rabbitmq
     depends_on:
       keycloak:
         condition: service_started
       mysql:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - frontend_backend
       - db_backend
+      - mq-backend
+
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:5001/health"]
       interval: 5s
       timeout: 3s
-      retries: 3
+      retries: 2
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"     
+      - "15672:15672" 
+    volumes:
+    - rabbitmq_data:/var/lib/rabbitmq 
+      
+    networks:
+      - mq-backend
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  notification-service:
+    image: nowsiejko/notification-service:latest
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+    networks:
+      - mq-backend
+
 
     
 volumes:
   mysql_data:
   keycloak_data:
-  frontend_node_modules:
+  rabbitmq_data:
   
     
 
@@ -141,6 +177,8 @@ networks:
   frontend_backend:
     driver: bridge 
   db_backend:
+    driver: bridge
+  mq-backend:
     driver: bridge
 
 

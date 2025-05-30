@@ -1,4 +1,10 @@
-__pycache__/
-Dockerfile*
+__pycache__
+*.pyc
+*.pyo
+*.log
+*.sqlite3
+.env
+.venv
+.git
 .dockerignore
-
+Dockerfile*

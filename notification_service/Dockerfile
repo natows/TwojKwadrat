@@ -8,9 +8,11 @@ WORKDIR /app
 
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
-ENV APP_PORT=5000
+ENV RABBITMQ_HOST=rabbitmq
+ENV PYTHONUNBUFFERED=1
 
 COPY --from=builder /install /usr/local/lib/python3.11/site-packages/
 COPY . .
-EXPOSE ${APP_PORT}
-CMD python -m uvicorn main:app --host 0.0.0.0 --port ${APP_PORT}
+
+
+CMD ["python", "notification_worker.py"]

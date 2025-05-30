@@ -5,6 +5,7 @@ RUN go mod download
 COPY . .
 
 ARG TARGETPLATFORM
+ENV APP_PORT=5001
 
 RUN case ${TARGETPLATFORM} in \
     "linux/amd64")  GOARCH=amd64  ;; \
@@ -16,5 +17,5 @@ RUN case ${TARGETPLATFORM} in \
 FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:latest
 WORKDIR /app
 COPY --from=builder /app/main .
-EXPOSE 5001
+EXPOSE ${APP_PORT}
 CMD ["./main"]
