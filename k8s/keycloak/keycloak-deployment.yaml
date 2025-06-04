@@ -1,0 +1,77 @@
+# k8s/keycloak/keycloak-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: twojkwadrat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+      - name: keycloak
+        image: quay.io/keycloak/keycloak:23.0.1
+        env:
+        - name: KEYCLOAK_ADMIN
+          value: "admin"
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-root-password
+        - name: KC_DB
+          value: "mysql"
+        - name: KC_DB_URL
+          value: "jdbc:mysql://mysql:3306/keycloak"
+        - name: KC_DB_USERNAME
+          value: "keycloak"
+        - name: KC_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-password
+        command: ["/opt/keycloak/bin/kc.sh"]
+        args: ["start-dev"]
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: keycloak-data
+          mountPath: /opt/keycloak/data
+        readinessProbe:
+          httpGet:
+            path: /realms/master
+            port: 8080
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 10
+        livenessProbe:
+          httpGet:
+            path: /realms/master
+            port: 8080
+          initialDelaySeconds: 300
+          periodSeconds: 60
+          timeoutSeconds: 15
+          failureThreshold: 5
+      volumes:
+      - name: keycloak-data
+        persistentVolumeClaim:
+          claimName: keycloak-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: twojkwadrat
+spec:
+  selector:
+    app: keycloak
+  ports:
+  - port: 8080
+    targetPort: 8080

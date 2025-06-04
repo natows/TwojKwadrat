@@ -1,0 +1,17 @@
+# k8s/configmaps/app-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: twojkwadrat
+data:
+  KEYCLOAK_URL: "http://keycloak:8080"
+  KEYCLOAK_REALM: "TwojKwadrat"
+  KEYCLOAK_CLIENT_ID: "TwojKwadrat-app"
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  DB_NAME_KEYCLOAK: "keycloak"
+  DB_NAME_POSTS: "posts"
+  DB_USER_KEYCLOAK: "keycloak"
+  DB_USER_ROOT: "root"
+  RABBITMQ_HOST: "rabbitmq"

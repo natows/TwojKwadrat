@@ -153,8 +153,10 @@ func getKeycloakPublicKey() (*rsa.PublicKey, error) {
 
     var jwks struct {
         Keys []struct {
+            Kid string `json:"kid"`  
             Kty string `json:"kty"`
-            Use string `json:"use"`
+            Use string `json:"use"`  
+            Alg string `json:"alg"` 
             N   string `json:"n"`
             E   string `json:"e"`
         } `json:"keys"`
@@ -168,14 +170,37 @@ func getKeycloakPublicKey() (*rsa.PublicKey, error) {
         return nil, fmt.Errorf("no keys found in JWKS")
     }
 
-    key := jwks.Keys[0]
+    var signingKey *struct {
+        Kid string `json:"kid"`
+        Kty string `json:"kty"`
+        Use string `json:"use"`
+        Alg string `json:"alg"`
+        N   string `json:"n"`
+        E   string `json:"e"`
+    }
     
-    nBytes, err := base64.RawURLEncoding.DecodeString(key.N)
+    for i := range jwks.Keys {
+        key := &jwks.Keys[i]
+        fmt.Printf("Found key: kid=%s, use=%s, alg=%s\n", key.Kid, key.Use, key.Alg)
+        
+        if key.Use == "sig" || key.Alg == "RS256" {
+            signingKey = key
+            fmt.Printf("Selected signing key: kid=%s\n", key.Kid)
+            break
+        }
+    }
+    
+    if signingKey == nil {
+        signingKey = &jwks.Keys[0]
+        fmt.Printf("No signing key found, using first key: kid=%s\n", signingKey.Kid)
+    }
+    
+    nBytes, err := base64.RawURLEncoding.DecodeString(signingKey.N)
     if err != nil {
         return nil, fmt.Errorf("error decoding n: %v", err)
     }
     
-    eBytes, err := base64.RawURLEncoding.DecodeString(key.E)
+    eBytes, err := base64.RawURLEncoding.DecodeString(signingKey.E)
     if err != nil {
         return nil, fmt.Errorf("error decoding e: %v", err)
     }
@@ -189,7 +214,7 @@ func getKeycloakPublicKey() (*rsa.PublicKey, error) {
     }
 
     publicKeyInitialized = true
-    fmt.Println("Keycloak public key loaded successfully")
+    fmt.Printf("Keycloak public key loaded successfully for kid: %s\n", signingKey.Kid)
     return publicKey, nil
 }
 
@@ -512,7 +537,6 @@ func postPost(w http.ResponseWriter, r *http.Request) {
     fmt.Printf("Post created successfully with ID: %d\n", postID)
 
     if postID > 0 && rabbitMQChannel != nil {
-    // Przygotuj dane powiadomienia
         notification := map[string]interface{}{
             "event": "post_created",
             "post_id": postID,
@@ -522,8 +546,7 @@ func postPost(w http.ResponseWriter, r *http.Request) {
             "price": post.Price,
             "timestamp": time.Now().Format(time.RFC3339),
         }
-        
-        // Serializuj do JSON
+
         notificationJson, err := json.Marshal(notification)
         if err == nil {
             err = rabbitMQChannel.Publish(

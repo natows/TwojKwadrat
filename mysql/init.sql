@@ -37,12 +37,12 @@ CREATE TABLE post_images (
 );
 
 
-CREATE TABLE favorites {
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    post_id INT NOT NULL,
-    user_id VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
-}
+-- CREATE TABLE favorites {
+--     id INT AUTO_INCREMENT PRIMARY KEY,
+--     post_id INT NOT NULL,
+--     user_id VARCHAR(255) NOT NULL,
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+-- }
 
 

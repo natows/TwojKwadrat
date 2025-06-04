@@ -93,13 +93,65 @@ export default function CreatePostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  const handleSubmit = async (
-    values: PostFormValues, 
-    { setSubmitting, resetForm }: FormikHelpers<PostFormValues>
-  ) => {
-    setIsSubmitting(true);
-    setSubmitError('');
+  const handleSubmit = async (values: PostFormValues, { setSubmitting, resetForm }: FormikHelpers<PostFormValues>) => {
+  setIsSubmitting(true);
+  setSubmitError('');
+
+  console.log('Keycloak authenticated:', keycloak.authenticated);
+  console.log('Keycloak initialized:', initialized);
+  console.log('Token exists:', !!keycloak.token);
+  console.log('Token length:', keycloak.token?.length || 0);
+  
+  if (keycloak.token) {
+    console.log('Token (first 50 chars):', keycloak.token.substring(0, 50) + '...');
+    console.log('Token expired:', keycloak.isTokenExpired());
     
+    try {
+      const tokenParts = keycloak.token.split('.');
+      if (tokenParts.length === 3) {
+        const payload = JSON.parse(atob(tokenParts[1]));
+        console.log('Token payload:', {
+          sub: payload.sub,
+          exp: payload.exp,
+          iat: payload.iat,
+          iss: payload.iss,
+          aud: payload.aud,
+          realm_access: payload.realm_access,
+          preferred_username: payload.preferred_username
+        });
+        console.log('Token expires at:', new Date(payload.exp * 1000));
+        console.log('Current time:', new Date());
+        console.log('Time until expiry (minutes):', Math.floor((payload.exp * 1000 - Date.now()) / 60000));
+      }
+    } catch (error) {
+      console.error('Error decoding token:', error);
+    }
+  }
+  if (!keycloak.authenticated) {
+    setSubmitError('Musisz być zalogowany aby dodać ogłoszenie');
+    setIsSubmitting(false);
+    return;
+  }
+  
+  if (!keycloak.token) {
+    setSubmitError('Brak tokenu autoryzacji');
+    setIsSubmitting(false);
+    return;
+  }
+  
+  if (keycloak.isTokenExpired()) {
+    console.log('Token expired, attempting to refresh...');
+    try {
+      const refreshed = await keycloak.updateToken(30);
+      console.log('Token refreshed successfully:', refreshed);
+      console.log('New token (first 50 chars):', keycloak.token?.substring(0, 50) + '...');
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      setSubmitError('Token wygasł, zaloguj się ponownie');
+      keycloak.logout();
+      return;
+    }
+  }
     try {
       const dataToSend = {
         title: values.title,

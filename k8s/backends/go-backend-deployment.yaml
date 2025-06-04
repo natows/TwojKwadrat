@@ -1,0 +1,93 @@
+# k8s/backends/go-backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-backend
+  namespace: twojkwadrat
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: go-backend
+  template:
+    metadata:
+      labels:
+        app: go-backend
+    spec:
+      containers:
+      - name: go-backend
+        image: nowsiejko/twojkwadrat-go-backendv2:latest
+        command: ["./main"]
+        ports:
+        - containerPort: 5001
+        env:
+        - name: KEYCLOAK_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: KEYCLOAK_URL
+        - name: KEYCLOAK_REALM
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: KEYCLOAK_REALM
+        - name: KEYCLOAK_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: KEYCLOAK_CLIENT_ID
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_PORT
+        - name: DB_USER
+          value: "root"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-root-password
+        - name: DB_NAME
+          value: "posts"
+        - name: RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: RABBITMQ_HOST
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-backend
+  namespace: twojkwadrat
+spec:
+  selector:
+    app: go-backend
+  ports:
+  - port: 5001
+    targetPort: 5001

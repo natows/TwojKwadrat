@@ -1,0 +1,40 @@
+# k8s/backends/notification-service-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: twojkwadrat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: nowsiejko/notification-service:latest
+        env:
+        - name: RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: RABBITMQ_HOST
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import socket; socket.socket().connect((os.environ.get('RABBITMQ_HOST', 'rabbitmq'), 5672))"
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

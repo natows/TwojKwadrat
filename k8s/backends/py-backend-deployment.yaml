@@ -1,0 +1,92 @@
+# k8s/backends/py-backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: py-backend
+  namespace: twojkwadrat
+spec:
+  replicas: 2  # Start with 2 replicas for HA
+  selector:
+    matchLabels:
+      app: py-backend
+  template:
+    metadata:
+      labels:
+        app: py-backend
+    spec:
+      containers:
+      - name: py-backend
+        image: nowsiejko/twojkwadrat-py-backend:latest
+        command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]
+        ports:
+        - containerPort: 5000
+        env:
+        - name: KEYCLOAK_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: KEYCLOAK_URL
+        - name: KEYCLOAK_REALM
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: KEYCLOAK_REALM
+        - name: KEYCLOAK_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: KEYCLOAK_CLIENT_ID
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_PORT
+        - name: DB_USER
+          value: "keycloak"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-password
+        - name: DB_NAME
+          value: "keycloak"
+        - name: DB_POOL_NAME
+          value: "keycloak_pool"
+        - name: DB_POOL_SIZE
+          value: "5"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: py-backend
+  namespace: twojkwadrat
+spec:
+  selector:
+    app: py-backend
+  ports:
+  - port: 5000
+    targetPort: 5000
