@@ -106,6 +106,9 @@ else
     echo -e "${YELLOW}HPA file not found - skipping (optional)${NC}"
 fi
 
+echo -e "${YELLOW}Checking hpa status"
+kubectl get hpa -n twojkwadrat
+
 echo -e "${GREEN}Deployment completed!${NC}"
 check_pods
 

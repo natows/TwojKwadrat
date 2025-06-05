@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 echo "Starting cleanup"
@@ -25,8 +24,7 @@ else
     exit 0
 fi
 
-echo -e "${YELLOW}Stopping all deployments (like docker-compose down)...${NC}"
-
+echo -e "${YELLOW}Stopping all deployments...${NC}"
 
 echo -e "${CYAN}Scaling down deployments...${NC}"
 kubectl scale deployment --all --replicas=0 -n twojkwadrat
@@ -44,15 +42,14 @@ kubectl delete service py-backend-loadbalancer -n twojkwadrat --ignore-not-found
 
 echo -e "${GREEN}LoadBalancer services removed${NC}"
 
-
 if kubectl get hpa -n twojkwadrat &> /dev/null; then
     echo -e "${CYAN}Removing HPA...${NC}"
     kubectl delete hpa --all -n twojkwadrat --ignore-not-found=true
+    echo -e "${GREEN}HPA removed${NC}"
 fi
 
 echo -e "${YELLOW}Preserving volumes and data:${NC}"
 kubectl get pvc -n twojkwadrat
 
 echo ""
-echo -e "${GREEN}Cleanup completed${NC}"
-
+echo -e "${GREEN}Cleanup completed successfully${NC}"

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 import mysql.connector
 from keycloak import KeycloakOpenID
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
+from jose import jwt, JWTError
 import os
 
 KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_URL", "http://keycloak:8080/")
@@ -21,25 +21,31 @@ oauth2_scheme = OAuth2PasswordBearer(
 def verify_token(token: str = Depends(oauth2_scheme)):
     try:
         public_key = KEYCLOAK_OPENID.public_key()
-        print(f"Raw public key: {public_key}")
+        # print(f"Raw public key: {public_key}")
         public_key = f"-----BEGIN PUBLIC KEY-----\n{public_key}\n-----END PUBLIC KEY-----"
-        print(f"Formatted public key: {public_key}")
+        # print(f"Formatted public key: {public_key}")
 
         decoded_token = jwt.decode(
             token,
             public_key,
             algorithms=["RS256"],
-            audience=KEYCLOAK_CLIENT_ID
+            audience=KEYCLOAK_CLIENT_ID,
+            options={"verify_exp": True} 
         )
-        print(f"Decoded token: {decoded_token}")  
+        # print(f"Decoded token: {decoded_token}")  
         return decoded_token
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except JWTError as e:  # ← Fix: Use JWTError instead of jwt.InvalidTokenError
+        print(f"JWT verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
-        print(f"Token verification error: {str(e)}")  
-        raise HTTPException(status_code=401, detail=f"Token invalid: {str(e)}")
+        print(f"Token verification error: {type(e).__name__}")  
+        raise HTTPException(status_code=401, detail="Authentication failed")
     
 def require_admin_user(token: dict = Depends(verify_token)):
     roles = token.get("realm_access", {}).get("roles", [])
-    print(f"User roles: {roles}")  # Debug roles
+    # print(f"User roles: {roles}")w9  
     if "admin" not in roles:
         raise HTTPException(status_code=403, detail="Admin role required")
     return token
@@ -49,8 +55,8 @@ router =  APIRouter()
 from mysql.connector import pooling
 
 DB_CONFIG = {
-    'user': os.getenv('DB_USER', 'keycloak'),
-    'password': os.getenv('DB_PASSWORD', 'keycloak'),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
     'host': os.getenv('DB_HOST', 'mysql'),
     'database': os.getenv('DB_NAME', 'keycloak'),
     'port': int(os.getenv('DB_PORT', '3306')),

@@ -60,6 +60,13 @@ spec:
             configMapKeyRef:
               name: app-config
               key: RABBITMQ_HOST
+        resources:
+          requests:
+            cpu: 100m     
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         readinessProbe:
           httpGet:
             path: /health
@@ -72,13 +79,6 @@ spec:
             port: 5001
           initialDelaySeconds: 30
           periodSeconds: 30
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
 ---
 apiVersion: v1
 kind: Service
