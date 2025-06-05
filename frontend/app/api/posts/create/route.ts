@@ -41,8 +41,7 @@ export async function POST(request: Request) {
     return Response.json(data, { status: 201 });
   } catch (error) {
     console.error('Error creating post:', error);
-    
-    // Fix: Type guard for error
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     
     return Response.json(
