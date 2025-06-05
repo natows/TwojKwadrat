@@ -140,14 +140,6 @@ func verifyJWT(tokenString string) (*KeycloakClaims, error) {
 
 func requireAuth(next http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-        if r.Method == "OPTIONS" {
-            return
-        }
-
         authHeader := r.Header.Get("Authorization")
         if authHeader == "" {
             http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
@@ -169,9 +161,8 @@ func requireAuth(next http.HandlerFunc) http.HandlerFunc {
 
         r.Header.Set("X-User-ID", claims.Sub)
         r.Header.Set("X-Username", claims.PreferredUsername)
-        
 
-        fmt.Printf("Authenticated user: %s (ID: %s)\n", claims.PreferredUsername, claims.Sub)
+        // fmt.Printf("Authenticated user: %s (ID: %s)\n", claims.PreferredUsername, claims.Sub)
 
         next(w, r)
     }

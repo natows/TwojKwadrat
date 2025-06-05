@@ -11,6 +11,9 @@ import (
 
     "time"
     amqp "github.com/rabbitmq/amqp091-go"
+    "golang.org/x/time/rate"
+    "strings"
+    "net"
 )
 
 
@@ -22,6 +25,8 @@ var publicKeyMutex sync.Mutex
 var publicKeyInitialized bool
 var rabbitMQConn *amqp.Connection
 var rabbitMQChannel *amqp.Channel
+var clients = make(map[string]*rate.Limiter)
+var mu sync.Mutex
 
 func initDB() {
 	dbHost := os.Getenv("DB_HOST")
@@ -44,6 +49,38 @@ func initDB() {
 	}
 	fmt.Println("Connected to the database successfully")
 
+}
+
+func getIP(r *http.Request) string {
+    if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+        return strings.Split(forwarded, ",")[0]
+    }
+    if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+        return realIP
+    }
+    ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+    return ip
+}
+
+
+func rateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        ip := getIP(r)
+        
+        mu.Lock()
+        if _, exists := clients[ip]; !exists {
+            clients[ip] = rate.NewLimiter(3, 5) 
+        }
+        limiter := clients[ip]
+        mu.Unlock()
+        
+        if !limiter.Allow() {
+            http.Error(w, "Too many requests", http.StatusTooManyRequests)
+            return
+        }
+        
+        next(w, r)
+    }
 }
 
 func initRabbitMQ() error {
@@ -87,23 +124,43 @@ func initRabbitMQ() error {
 
 
 func healthCheck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	if r.Method == "OPTIONS" {
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ok"}`))
+    userAgent := r.Header.Get("User-Agent")
+
+    if strings.Contains(userAgent, "kube-probe") {
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte(`{"status":"ok"}`))
+        return
+    }
+    
+    ip := getIP(r)
+    
+    mu.Lock()
+    healthKey := ip + "_health"
+    if _, exists := clients[healthKey]; !exists {
+        clients[healthKey] = rate.NewLimiter(0.5, 2) 
+    }
+    limiter := clients[healthKey]
+    mu.Unlock()
+    
+    if !limiter.Allow() {
+        http.Error(w, "Too many health requests", http.StatusTooManyRequests)
+        return
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    w.Write([]byte(`{"status":"ok"}`))
 }
 
 
 
-func main() {
-    fmt.Println("=== RUNNING UPDATED CODE VERSION WITH RABBITMQ FIX ===")
 
-	initDB()
+
+
+
+func main() {
+    initDB()
     err := initRabbitMQ()
     if err != nil {
         fmt.Printf("Warning: Could not connect to RabbitMQ: %v\n", err)
@@ -114,15 +171,16 @@ func main() {
         defer rabbitMQChannel.Close()
     }
 
-	http.HandleFunc("/api/get/", getPostByID)
-	http.HandleFunc("/api/posts/", getPosts) 
-	http.HandleFunc("/api/posts/create", requireAuth(postPost))
-	http.HandleFunc("/health", healthCheck)
+    http.HandleFunc("/api/get/", rateLimitMiddleware(corsMiddleware(getPostByID)))
+    http.HandleFunc("/api/posts/", rateLimitMiddleware(corsMiddleware(getPosts)))
+    http.HandleFunc("/api/posts/create", rateLimitMiddleware(corsMiddleware(requireAuth(postPost))))
+    http.HandleFunc("/health", healthCheck) 
 
-	fmt.Println("Server is running on port 5001")
-	err = http.ListenAndServe(":5001", nil)
-	if err != nil {
-		fmt.Printf("Error starting server: %s\n", err)
-	}
+    fmt.Println("Server is running on port 5001")
+    
+    err = http.ListenAndServe(":5001", nil)
+    if err != nil {
+        fmt.Printf("Error starting server: %s\n", err)
+    }
 }
 

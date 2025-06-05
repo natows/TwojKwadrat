@@ -112,46 +112,31 @@ const nextConfig: NextConfig = {
       },
       
 
-      {
-      source: '/api/posts/create',               
-      destination: 'http://go-backend:5001/api/posts/create',
-    },
-    {
-      source: '/api/posts/create/',
-      destination: 'http://go-backend:5001/api/posts/create',
-    },
-    {
-      source: '/api/get/:id(\\d+)',            
-      destination: 'http://go-backend:5001/api/get/:id',
-    },
-    {
-      source: '/api/posts',                     
-      destination: 'http://go-backend:5001/api/posts/',
-    },
-    {
-      source: '/api/posts/',
-      destination: 'http://go-backend:5001/api/posts/',
-    },
-     {
-      source: '/api/favorites',
-      destination: 'http://go-backend:5001/api/favorites',
-    },
-    {
-      source: '/api/favorites/add/:id',
-      destination: 'http://go-backend:5001/api/favorites/add/:id',
-    },
-    {
-      source: '/api/favorites/remove/:id',
-      destination: 'http://go-backend:5001/api/favorites/remove/:id',
-    },
-    {
-      source: '/api/favorites/check/:id',
-      destination: 'http://go-backend:5001/api/favorites/check/:id',
-    },
-      {
-        source: '/api/:path*',
-        destination: 'http://go-backend:5001/api/:path*',
-      },
+    //   {
+    //   source: '/api/posts/create',               
+    //   destination: 'http://go-backend:5001/api/posts/create',
+    // },
+    // {
+    //   source: '/api/posts/create/',
+    //   destination: 'http://go-backend:5001/api/posts/create',
+    // },
+    // {
+    //   source: '/api/get/:id(\\d+)',            
+    //   destination: 'http://go-backend:5001/api/get/:id',
+    // },
+    // {
+    //   source: '/api/posts',                     
+    //   destination: 'http://go-backend:5001/api/posts/',
+    // },
+    // {
+    //   source: '/api/posts/',
+    //   destination: 'http://go-backend:5001/api/posts/',
+    // },
+
+    //   {
+    //     source: '/api/:path*',
+    //     destination: 'http://go-backend:5001/api/:path*',
+    //   },
     ];
   }
 };
