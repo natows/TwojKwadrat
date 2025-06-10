@@ -162,8 +162,6 @@ func requireAuth(next http.HandlerFunc) http.HandlerFunc {
         r.Header.Set("X-User-ID", claims.Sub)
         r.Header.Set("X-Username", claims.PreferredUsername)
 
-        // fmt.Printf("Authenticated user: %s (ID: %s)\n", claims.PreferredUsername, claims.Sub)
-
         next(w, r)
     }
 }

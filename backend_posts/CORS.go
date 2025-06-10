@@ -2,25 +2,16 @@ package main
 
 import (
     "net/http"
-	"strings"
+	// "strings"
 )
 
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         origin := r.Header.Get("Origin")
-		userAgent := r.Header.Get("User-Agent")
         allowedOrigins := []string{  
 			"http://localhost:3000",    
             "http://frontend:3000",  
 			
-        }
-
-		if origin == "" && strings.Contains(userAgent, "Go-http-client") {
-            w.Header().Set("Access-Control-Allow-Origin", "*")
-            w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-            next(w, r)
-            return
         }
 
 		if origin == "" {
@@ -58,4 +49,4 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
         next(w, r)
     }
-} //czy bez headers powinien zwracac odpowiedz?
+} 
