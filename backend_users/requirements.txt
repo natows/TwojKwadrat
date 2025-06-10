@@ -4,3 +4,4 @@ mysql-connector-python==8.2.0
 python-keycloak==3.7.0
 python-jose==3.3.0
 requests==2.31.0
+slowapi==0.1.9

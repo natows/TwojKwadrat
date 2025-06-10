@@ -1,9 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 import mysql.connector
 from keycloak import KeycloakOpenID
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 import os
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+
+limiter = Limiter(key_func=get_remote_address)
 
 KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_URL", "http://keycloak:8080/")
 KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "TwojKwadrat")
@@ -21,9 +26,7 @@ oauth2_scheme = OAuth2PasswordBearer(
 def verify_token(token: str = Depends(oauth2_scheme)):
     try:
         public_key = KEYCLOAK_OPENID.public_key()
-        # print(f"Raw public key: {public_key}")
         public_key = f"-----BEGIN PUBLIC KEY-----\n{public_key}\n-----END PUBLIC KEY-----"
-        # print(f"Formatted public key: {public_key}")
 
         decoded_token = jwt.decode(
             token,
@@ -32,11 +35,10 @@ def verify_token(token: str = Depends(oauth2_scheme)):
             audience=KEYCLOAK_CLIENT_ID,
             options={"verify_exp": True} 
         )
-        # print(f"Decoded token: {decoded_token}")  
         return decoded_token
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except JWTError as e:  # ← Fix: Use JWTError instead of jwt.InvalidTokenError
+    except JWTError as e: 
         print(f"JWT verification failed: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
@@ -45,7 +47,6 @@ def verify_token(token: str = Depends(oauth2_scheme)):
     
 def require_admin_user(token: dict = Depends(verify_token)):
     roles = token.get("realm_access", {}).get("roles", [])
-    # print(f"User roles: {roles}")w9  
     if "admin" not in roles:
         raise HTTPException(status_code=403, detail="Admin role required")
     return token
@@ -72,8 +73,10 @@ def get_db_connection():
         print(f"Database connection error: {err}")
         raise HTTPException(status_code=500, detail="Database connection failed")
 
+
+@limiter.limit("10/minute")
 @router.get('/')
-async def get_users(user=Depends(require_admin_user)):
+async def get_users(request: Request, user=Depends(require_admin_user)):
     try:
         mydb = get_db_connection()
         mycursor = mydb.cursor()
@@ -85,7 +88,6 @@ async def get_users(user=Depends(require_admin_user)):
             {"id": row[0], "username": row[9], "email": row[1], "first_name": row[6], "last_name": row[7], "realm_id": row[4]}
             for row in results
         ]
-
         mycursor.close()
         mydb.close()
 
@@ -94,16 +96,15 @@ async def get_users(user=Depends(require_admin_user)):
         raise HTTPException(status_code=500, detail=f"Database error: {str(err)}")
 
 
+@limiter.limit("10/minute")
 @router.get('/{user_id}')
-async def get_user(user_id: str, user=Depends(verify_token)):
+async def get_user(request: Request, user_id: str, user=Depends(verify_token)):
     try:
         mydb = get_db_connection()
         mycursor = mydb.cursor()
         
         mycursor.execute("SELECT * FROM USER_ENTITY WHERE ID = %s", (user_id,))
         result = mycursor.fetchone()
-
-        print(f"Query result: {result}")
 
         if not result:
             raise HTTPException(status_code=404, detail="User not found")
@@ -115,10 +116,6 @@ async def get_user(user_id: str, user=Depends(verify_token)):
             "first_name": result[6],
             "last_name": result[7]
         }
-
-        print(f"Returning user data: {user_data}") 
-
-        
 
         mycursor.close()
         mydb.close()
