@@ -1,4 +1,3 @@
-# k8s/rabbitmq/rabbitmq-pvc.yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

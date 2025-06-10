@@ -1,4 +1,3 @@
-# k8s/backends/go-backend-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,17 +23,17 @@ spec:
         - name: KEYCLOAK_URL
           valueFrom:
             configMapKeyRef:
-              name: app-config
+              name: keycloak-config
               key: KEYCLOAK_URL
         - name: KEYCLOAK_REALM
           valueFrom:
             configMapKeyRef:
-              name: app-config
+              name: keycloak-config
               key: KEYCLOAK_REALM
         - name: KEYCLOAK_CLIENT_ID
           valueFrom:
             configMapKeyRef:
-              name: app-config
+              name: keycloak-config
               key: KEYCLOAK_CLIENT_ID
         - name: DB_HOST
           valueFrom:

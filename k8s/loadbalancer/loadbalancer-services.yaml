@@ -1,4 +1,3 @@
-# k8s/services/loadbalancer-services.yaml
 apiVersion: v1
 kind: Service
 metadata:

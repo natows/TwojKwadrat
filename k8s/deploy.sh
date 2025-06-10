@@ -33,8 +33,10 @@ kubectl apply -f k8s/namespace.yaml
 
 echo -e "${YELLOW}Creating secrets and configmaps...${NC}"
 kubectl apply -f k8s/secrets/mysql-secret.yaml
+kubectl apply -f k8s/secrets/keycloak-secret.yaml
 kubectl apply -f k8s/configmaps/app-config.yaml
 kubectl apply -f k8s/configmaps/mysql-init-configmap.yaml
+kubectl apply -f k8s/configmaps/keycloak-configmap.yaml
 
 echo -e "${YELLOW}Creating persistent volumes...${NC}"
 kubectl apply -f k8s/database/mysql-pvc.yaml

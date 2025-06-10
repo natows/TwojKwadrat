@@ -1,4 +1,3 @@
-# k8s/keycloak/keycloak-pvc.yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

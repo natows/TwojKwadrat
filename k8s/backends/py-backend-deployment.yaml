@@ -1,11 +1,10 @@
-# k8s/backends/py-backend-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: py-backend
   namespace: twojkwadrat
 spec:
-  replicas: 2  # Start with 2 replicas for HA
+  replicas: 2  
   selector:
     matchLabels:
       app: py-backend
@@ -16,7 +15,7 @@ spec:
     spec:
       containers:
       - name: py-backend
-        image: nowsiejko/twojkwadrat-py-backendv2:latest
+        image: nowsiejko/twojkwadrat-py-backendv3:latest
         command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]
         ports:
         - containerPort: 5000
@@ -24,17 +23,17 @@ spec:
         - name: KEYCLOAK_URL
           valueFrom:
             configMapKeyRef:
-              name: app-config
+              name: keycloak-config
               key: KEYCLOAK_URL
         - name: KEYCLOAK_REALM
           valueFrom:
             configMapKeyRef:
-              name: app-config
+              name: keycloak-config
               key: KEYCLOAK_REALM
         - name: KEYCLOAK_CLIENT_ID
           valueFrom:
             configMapKeyRef:
-              name: app-config
+              name: keycloak-config
               key: KEYCLOAK_CLIENT_ID
         - name: DB_HOST
           valueFrom:

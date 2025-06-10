@@ -1,4 +1,3 @@
-# k8s/configmaps/mysql-init-configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:

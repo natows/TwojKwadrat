@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-config
+  namespace: twojkwadrat
+data:
+  KEYCLOAK_URL: "http://keycloak:8080"
+  KEYCLOAK_REALM: "TwojKwadrat"
+  KEYCLOAK_CLIENT_ID: "TwojKwadrat-app"
