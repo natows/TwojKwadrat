@@ -13,9 +13,24 @@ spec:
       labels:
         app: mysql
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999 
+        runAsGroup: 999
+        fsGroup: 999 
       containers:
       - name: mysql
         image: mysql:8.0
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - CHOWN      
+            - SETUID     
+            - SETGID  
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
@@ -28,9 +43,15 @@ spec:
               name: mysql-secret
               key: mysql-password
         - name: MYSQL_DATABASE
-          value: "keycloak"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MYSQL_DATABASE
         - name: MYSQL_USER
-          value: "keycloak"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MYSQL_USER
         ports:
         - containerPort: 3306
         volumeMounts:
@@ -47,6 +68,13 @@ spec:
             - localhost
           initialDelaySeconds: 5
           periodSeconds: 10
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
       volumes:
       - name: mysql-storage
         persistentVolumeClaim:

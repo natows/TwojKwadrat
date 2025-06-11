@@ -13,9 +13,20 @@ spec:
       labels:
         app: keycloak
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
       - name: keycloak
         image: quay.io/keycloak/keycloak:23.0.1
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  
+          capabilities:
+            drop:
+            - ALL
         env:
         - name: KEYCLOAK_ADMIN
           valueFrom:
@@ -61,10 +72,18 @@ spec:
           periodSeconds: 60
           timeoutSeconds: 15
           failureThreshold: 5
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
       volumes:
       - name: keycloak-data
         persistentVolumeClaim:
           claimName: keycloak-pvc
+
 ---
 apiVersion: v1
 kind: Service

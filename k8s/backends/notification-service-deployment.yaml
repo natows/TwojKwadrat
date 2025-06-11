@@ -13,9 +13,20 @@ spec:
       labels:
         app: notification-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
       - name: notification-service
         image: nowsiejko/notification-service:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true  
+          capabilities:
+            drop:
+            - ALL
         env:
         - name: RABBITMQ_HOST
           valueFrom:

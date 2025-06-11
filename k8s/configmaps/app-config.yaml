@@ -12,3 +12,6 @@ data:
   DB_USER_KEYCLOAK: "keycloak"
   DB_USER_ROOT: "root"
   RABBITMQ_HOST: "rabbitmq"
+  MYSQL_DATABASE: "keycloak"
+  MYSQL_USER: "keycloak"
+  DB_USER_POSTS: "posts"

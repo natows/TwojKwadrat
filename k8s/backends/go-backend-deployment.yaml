@@ -13,12 +13,25 @@ spec:
       labels:
         app: go-backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 3000
       containers:
       - name: go-backend
         image: nowsiejko/twojkwadrat-go-backendv2:latest
         command: ["./main"]
         ports:
         - containerPort: 5001
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE
         env:
         - name: KEYCLOAK_URL
           valueFrom:
@@ -46,14 +59,20 @@ spec:
               name: app-config
               key: DB_PORT
         - name: DB_USER
-          value: "root"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_USER_ROOT
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
               name: mysql-secret
               key: mysql-root-password
         - name: DB_NAME
-          value: "posts"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DB_NAME_POSTS
         - name: RABBITMQ_HOST
           valueFrom:
             configMapKeyRef:

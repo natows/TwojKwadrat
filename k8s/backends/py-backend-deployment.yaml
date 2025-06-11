@@ -13,12 +13,23 @@ spec:
       labels:
         app: py-backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
       - name: py-backend
         image: nowsiejko/twojkwadrat-py-backendv3:latest
         command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]
         ports:
         - containerPort: 5000
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  
+          capabilities:
+            drop:
+            - ALL
         env:
         - name: KEYCLOAK_URL
           valueFrom:

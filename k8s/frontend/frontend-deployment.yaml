@@ -13,11 +13,22 @@ spec:
       labels:
         app: frontend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
       - name: frontend
         image: nowsiejko/twojkwadrat-frontendv2:latest
         ports:
         - containerPort: 3000
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  
+          capabilities:
+            drop:
+            - ALL
         env:
         - name: NODE_ENV
           value: "production"

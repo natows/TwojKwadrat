@@ -13,9 +13,20 @@ spec:
       labels:
         app: rabbitmq
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999  
+        runAsGroup: 999
+        fsGroup: 999
       containers:
       - name: rabbitmq
         image: rabbitmq:3-management
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  
+          capabilities:
+            drop:
+            - ALL
         env:
         - name: RABBITMQ_ERLANG_COOKIE
           value: "twojkwadrat_cookie_value"
@@ -35,6 +46,13 @@ spec:
           timeoutSeconds: 5 
           successThreshold: 1
           failureThreshold: 3
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
       volumes:
       - name: rabbitmq-storage
         persistentVolumeClaim:
