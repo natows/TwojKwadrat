@@ -17,13 +17,16 @@ jobs:
         service:
           - name: frontend
             context: ./frontend
-            image: twojkwadrat-frontend
+            image: twojkwadrat-frontend-cicd    
           - name: go-backend
             context: ./backend_posts
-            image: twojkwadrat-go-backend
+            image: twojkwadrat-go-backend-cicd  
           - name: py-backend
             context: ./backend_users
-            image: twojkwadrat-py-backend
+            image: twojkwadrat-py-backend-cicd 
+          - name: notification-service
+            context: ./notification_service
+            image: notification-service-cicd    # ✅ NOWA NAZWA
 
     steps:
     - name: Checkout code
@@ -40,4 +43,6 @@ jobs:
       with:
         context: ${{ matrix.service.context }}
         push: true
-        tags: ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}:latest
+        tags: |
+          ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}:latest
+          ${{ env.DOCKER_USERNAME }}/${{ matrix.service.image }}:${{ github.sha }}
