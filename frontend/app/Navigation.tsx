@@ -7,16 +7,20 @@ import { useRouter } from 'next/navigation';
 export default function Navigation() {
     const { keycloak, initialized } = useKeycloak();
 
-    const handleLogout = () => {
-        fetch('/logout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${keycloak.token}`,
-            },
-
+   const handleLogout = async () => {  
+        try {
+            await fetch('/logout', {  
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${keycloak.token}`,
+                },
+            });
+            console.log('Token blacklisted');
+        } catch (error) {
+            console.error('Error blacklisting token:', error);
         }
-        )
+        
         keycloak.logout();
     }
 

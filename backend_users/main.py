@@ -21,17 +21,14 @@ blacklist_lock = RLock()
 
 
 def blacklist_token(token: str, expiration: int):
-    """Dodaj token do blacklisty"""
+
     with blacklist_lock:
-        # Usuń 'Bearer ' prefix
         clean_token = token.replace('Bearer ', '') if token.startswith('Bearer ') else token
         token_blacklist[clean_token] = expiration
         print(f"Token blacklisted until: {time.ctime(expiration)}")
 
 def is_token_blacklisted(token: str) -> bool:
-    """Sprawdź czy token jest na blackliście"""
     with blacklist_lock:
-        # Usuń 'Bearer ' prefix
         clean_token = token.replace('Bearer ', '') if token.startswith('Bearer ') else token
         
         if clean_token not in token_blacklist:
@@ -39,14 +36,12 @@ def is_token_blacklisted(token: str) -> bool:
         
         expiration = token_blacklist[clean_token]
         if time.time() > expiration:
-            # Usuń wygasły token
             del token_blacklist[clean_token]
             return False
         
         return True
 
 def cleanup_expired_tokens():
-    """Usuń wygasłe tokeny z blacklisty"""
     with blacklist_lock:
         current_time = time.time()
         expired_tokens = [token for token, exp in token_blacklist.items() if current_time > exp]
@@ -68,7 +63,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://frontend:3000"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"]
 )
 
@@ -95,14 +90,13 @@ async def health(request: Request):
 import asyncio
 async def periodic_cleanup():
     while True:
-        await asyncio.sleep(3600)  # 1 godzina
+        await asyncio.sleep(3600)  
         cleanup_expired_tokens()
 
 @app.on_event("startup")
 async def startup_event():
-    # Uruchom cleanup task w tle
     asyncio.create_task(periodic_cleanup())
-    print("✅ Token cleanup task started")
+    print("Token cleanup task started")
 
 
 @app.post('/logout')
@@ -111,15 +105,12 @@ async def logout(request: Request):
         auth_header = request.headers.get("Authorization")
         if not auth_header:
             raise HTTPException(status_code=401, detail="Authorization header required")
-        
-        # Ekstraktuj token
+
         if not auth_header.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid Authorization header format")
         
-        token = auth_header[7:]  # Usuń "Bearer "
-
+        token = auth_header[7:]  
         try:
-            # Dekoduj bez weryfikacji żeby dostać exp
             unverified_token = jwt.decode(token, options={"verify_signature": False})
             expiration = unverified_token.get('exp', 0)
             
@@ -128,10 +119,8 @@ async def logout(request: Request):
             
         except Exception as e:
             print(f"Error parsing token for expiration: {e}")
-            # Fallback - dodaj na 1 godzinę
             expiration = int(time.time()) + 3600
-        
-        # ✅ DODAJ DO BLACKLISTY
+
         blacklist_token(token, expiration)
         
         return {
