@@ -28,6 +28,9 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 is_token_blacklisted_func = None
 
+
+
+
 def set_blacklist_function(func):
     global is_token_blacklisted_func
     is_token_blacklisted_func = func

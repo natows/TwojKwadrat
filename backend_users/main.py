@@ -99,7 +99,7 @@ async def startup_event():
     print("Token cleanup task started")
 
 
-@app.post('/logout')
+@app.post('/api/logout')
 async def logout(request: Request):
     try:
         auth_header = request.headers.get("Authorization")
@@ -111,8 +111,16 @@ async def logout(request: Request):
         
         token = auth_header[7:]  
         try:
-            from jose import jwt
-            unverified_token = jwt.decode(token, options={"verify_signature": False, "verify_aud": False})
+            unverified_token = jwt.decode(
+                token, 
+                key="dummy", 
+                algorithms=["RS256"], 
+                options={
+                    "verify_signature": False,  
+                    "verify_aud": False,      
+                    "verify_exp": False        
+                }
+            )
             expiration = unverified_token.get('exp', 0)
             
             if expiration == 0:
