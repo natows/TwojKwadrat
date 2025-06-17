@@ -6,6 +6,7 @@ from jose import jwt, JWTError
 import os
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+import requests
 
 
 limiter = Limiter(key_func=get_remote_address)
@@ -35,6 +36,10 @@ def verify_token(token: str = Depends(oauth2_scheme)):
             audience=KEYCLOAK_CLIENT_ID,
             options={"verify_exp": True} 
         )
+
+        if not is_keycloak_session_active(token):
+            raise HTTPException(status_code=401, detail="Keycloak session is not active")
+        
         return decoded_token
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -44,7 +49,23 @@ def verify_token(token: str = Depends(oauth2_scheme)):
     except Exception as e:
         print(f"Token verification error: {type(e).__name__}")  
         raise HTTPException(status_code=401, detail="Authentication failed")
+
+
+def is_keycloak_session_active(token: str) -> bool:
+    introspect_url = f"{KEYCLOAK_SERVER_URL}realms/{KEYCLOAK_REALM}/protocol/openid-connect/token/introspect"
     
+    response = requests.post(introspect_url, data={
+        "token": token,
+        "client_id": KEYCLOAK_CLIENT_ID
+    })
+    
+    if response.status_code == 200:
+        result = response.json()
+        return result.get("active", False)
+    
+    return False
+
+
 def require_admin_user(token: dict = Depends(verify_token)):
     roles = token.get("realm_access", {}).get("roles", [])
     if "admin" not in roles:

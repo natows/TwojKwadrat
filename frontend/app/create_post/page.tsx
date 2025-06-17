@@ -110,18 +110,7 @@ export default function CreatePostPage() {
       const tokenParts = keycloak.token.split('.');
       if (tokenParts.length === 3) {
         const payload = JSON.parse(atob(tokenParts[1]));
-        console.log('Token payload:', {
-          sub: payload.sub,
-          exp: payload.exp,
-          iat: payload.iat,
-          iss: payload.iss,
-          aud: payload.aud,
-          realm_access: payload.realm_access,
-          preferred_username: payload.preferred_username
-        });
-        console.log('Token expires at:', new Date(payload.exp * 1000));
-        console.log('Current time:', new Date());
-        console.log('Time until expiry (minutes):', Math.floor((payload.exp * 1000 - Date.now()) / 60000));
+      
       }
     } catch (error) {
       console.error('Error decoding token:', error);
