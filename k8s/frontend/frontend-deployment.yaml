@@ -20,7 +20,7 @@ spec:
         fsGroup: 1000
       containers:
       - name: frontend
-        image: nowsiejko/twojkwadrat-frontendv2:latest
+        image: nowsiejko/twojkwadrat-frontend-cicd
         ports:
         - containerPort: 3000
         securityContext:

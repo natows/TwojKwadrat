@@ -111,12 +111,13 @@ async def logout(request: Request):
         
         token = auth_header[7:]  
         try:
-            unverified_token = jwt.decode(token, options={"verify_signature": False})
+            from jose import jwt
+            unverified_token = jwt.decode(token, options={"verify_signature": False, "verify_aud": False})
             expiration = unverified_token.get('exp', 0)
             
             if expiration == 0:
                 expiration = int(time.time()) + 3600
-            
+                
         except Exception as e:
             print(f"Error parsing token for expiration: {e}")
             expiration = int(time.time()) + 3600
