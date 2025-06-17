@@ -11,7 +11,6 @@ import (
 	"os"
 	"strings"
 	"github.com/golang-jwt/jwt/v4"
-    "net/url"
 )
 
 
@@ -114,43 +113,15 @@ func getKeycloakPublicKey() (*rsa.PublicKey, error) {
 }
 
 
-func isKeycloakSessionActive(token string) bool {
-    keycloakURL := os.Getenv("KEYCLOAK_URL")
-    if keycloakURL == "" {
-        keycloakURL = "http://keycloak:8080"
-    }
-    
-    introspectURL := fmt.Sprintf("%s/realms/TwojKwadrat/protocol/openid-connect/token/introspect", keycloakURL)
-    
-    data := url.Values{}
-    data.Set("token", token)
-    data.Set("client_id", "TwojKwadrat-app")
-    
-    resp, err := http.PostForm(introspectURL, data)
-    if err != nil {
-        fmt.Printf("Keycloak introspection error: %v\n", err)
-        return false 
-    }
-    defer resp.Body.Close()
-    
-    if resp.StatusCode != 200 {
-        return false
-    }
-    
-    var result map[string]interface{}
-    if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-        return false
-    }
-    
-    active, ok := result["active"].(bool)
-    return ok && active
-}
 
 
 func verifyJWT(tokenString string) (*KeycloakClaims, error) {
-    if !isKeycloakSessionActive(tokenString) {
-        return nil, fmt.Errorf("session inactive - user logged out")
+
+    if isTokenBlacklisted(tokenString) {
+        fmt.Printf("Token is blacklisted - rejecting\n")
+        return nil, fmt.Errorf("token blacklisted - user logged out")
     }
+
 
     key, err := getKeycloakPublicKey()
     if err != nil {

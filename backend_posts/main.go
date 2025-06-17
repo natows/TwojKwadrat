@@ -14,6 +14,10 @@ import (
     "golang.org/x/time/rate"
     "strings"
     "net"
+    "github.com/go-redis/redis/v8"
+    "context"
+    "github.com/golang-jwt/jwt/v4"
+    "encoding/json"
 )
 
 
@@ -27,6 +31,125 @@ var rabbitMQConn *amqp.Connection
 var rabbitMQChannel *amqp.Channel
 var clients = make(map[string]*rate.Limiter)
 var mu sync.Mutex
+var redisClient *redis.Client
+
+
+func initRedis() {
+    redisHost := os.Getenv("REDIS_HOST")
+    redisPort := os.Getenv("REDIS_PORT")
+    if redisHost == "" {
+        redisHost = "redis"
+    }
+    if redisPort == "" {
+        redisPort = "6379"
+    }
+
+    redisClient = redis.NewClient(&redis.Options{
+        Addr: redisHost + ":" + redisPort,
+    })
+    
+    ctx := context.Background()
+    _, err := redisClient.Ping(ctx).Result()
+    if err != nil {
+        fmt.Printf("Redis connection failed: %v\n", err)
+        redisClient = nil
+    } else {
+        fmt.Println("Go Backend connected to Redis successfully")
+    }
+}
+func blacklistToken(token string, expiration time.Time) {
+    if redisClient == nil {
+        fmt.Println("Redis not available - cannot blacklist token")
+        return
+    }
+    
+    ctx := context.Background()
+    ttl := time.Until(expiration)
+    if ttl > 0 {
+        err := redisClient.Set(ctx, "bl:"+token, "1", ttl).Err()
+        if err != nil {
+            fmt.Printf("Redis blacklist error: %v\n", err)
+        } else {
+            fmt.Printf("Token blacklisted for %v\n", ttl)
+        }
+    }
+}
+
+func isTokenBlacklisted(token string) bool {
+    if redisClient == nil {
+        return false
+    }
+    
+    ctx := context.Background()
+    exists := redisClient.Exists(ctx, "bl:"+token).Val()
+    result := exists > 0
+    
+    if result {
+        fmt.Printf("Token is blacklisted\n")
+    }
+    
+    return result
+}
+
+func parseTokenClaims(tokenString string) (*KeycloakClaims, error) {
+    token, _, err := new(jwt.Parser).ParseUnverified(tokenString, &KeycloakClaims{})
+    if err != nil {
+        return nil, err
+    }
+    
+    if claims, ok := token.Claims.(*KeycloakClaims); ok {
+        return claims, nil
+    }
+    
+    return nil, fmt.Errorf("invalid token claims")
+}
+
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    
+    if r.Method != "POST" {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+    
+    authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+        return
+    }
+
+    tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+    if tokenString == authHeader {
+        http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
+        return
+    }
+
+    fmt.Printf("🔍 Go: Logout request for token: %s...\n", tokenString[:20])
+
+    claims, err := parseTokenClaims(tokenString)
+    if err != nil {
+        http.Error(w, "Invalid token", http.StatusBadRequest)
+        return
+    }
+
+    var expiration time.Time 
+    if claims.ExpiresAt != nil {
+        expiration = claims.ExpiresAt.Time
+    } else {
+        expiration = time.Now().Add(24 * time.Hour)
+    }
+
+    blacklistToken(tokenString, expiration)
+
+    response := map[string]string{
+        "message": "Successfully logged out from Go backend",
+        "blacklisted_until": expiration.Format(time.RFC3339),
+    }
+    
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(response)
+}
 
 func initDB() {
 	dbHost := os.Getenv("DB_HOST")
@@ -161,6 +284,7 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 
 func main() {
     initDB()
+    initRedis()
     err := initRabbitMQ()
     if err != nil {
         fmt.Printf("Warning: Could not connect to RabbitMQ: %v\n", err)
@@ -175,6 +299,7 @@ func main() {
     http.HandleFunc("/api/posts/", rateLimitMiddleware(corsMiddleware(getPosts)))
     http.HandleFunc("/api/posts/create", rateLimitMiddleware(corsMiddleware(requireAuth(postPost))))
     http.HandleFunc("/health", healthCheck) 
+    http.HandleFunc("/api/logout", rateLimitMiddleware(corsMiddleware(logoutHandler)))
 
     fmt.Println("Server is running on port 5001")
     

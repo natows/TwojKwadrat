@@ -36,48 +36,23 @@ def set_blacklist_function(func):
     is_token_blacklisted_func = func
     print("Blacklist function connected to user router")
 
-# def verify_token(token: str = Depends(oauth2_scheme)):
-#     try:
-#         if is_token_blacklisted_func and is_token_blacklisted_func(token):
-#             raise HTTPException(status_code=401, detail="Token blacklisted - user logged out")
-        
-#         public_key = KEYCLOAK_OPENID.public_key()
-#         public_key = f"-----BEGIN PUBLIC KEY-----\n{public_key}\n-----END PUBLIC KEY-----"
-
-#         decoded_token = jwt.decode(
-#             token,
-#             public_key,
-#             algorithms=["RS256"],
-#             audience=KEYCLOAK_CLIENT_ID,
-#             options={"verify_exp": True} 
-#         )
-
-#         return decoded_token
-#     except jwt.ExpiredSignatureError:
-#         raise HTTPException(status_code=401, detail="Token expired")
-#     except JWTError as e: 
-#         print(f"JWT verification failed: {e}")
-#         raise HTTPException(status_code=401, detail="Invalid token")
-#     except Exception as e:
-#         print(f"Token verification error: {type(e).__name__}")  
-#         raise HTTPException(status_code=401, detail="Authentication failed")
+# 
 def verify_token(token: str = Depends(oauth2_scheme)):
     try:
-        # ✅ DODAJ DEBUG
-        print(f"🔍 Checking token (first 20 chars): {token[:20]}...")
-        print(f"🔍 Blacklist function available: {is_token_blacklisted_func is not None}")
+        print(f" Checking token (first 20 chars): {token[:20]}...")
+        print(f" Blacklist function available: {is_token_blacklisted_func is not None}")
         
         if is_token_blacklisted_func:
             is_blacklisted = is_token_blacklisted_func(token)
-            print(f"🔍 Token blacklisted: {is_blacklisted}")
+            print(f" Token blacklisted: {is_blacklisted}")
             
             if is_blacklisted:
-                print("❌ Token is blacklisted - rejecting request")
+                print("Token is blacklisted - rejecting request")
                 raise HTTPException(status_code=401, detail="Token blacklisted - user logged out")
         else:
-            print("⚠️ No blacklist function available")
+            print("No blacklist function available")
         
-        print("✅ Token not blacklisted - proceeding with JWT verification")
+        print("Token not blacklisted - proceeding with JWT verification")
         
         public_key = KEYCLOAK_OPENID.public_key()
         public_key = f"-----BEGIN PUBLIC KEY-----\n{public_key}\n-----END PUBLIC KEY-----"

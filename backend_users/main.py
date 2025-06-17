@@ -22,34 +22,31 @@ app = FastAPI()
 
 
 def blacklist_token(token: str, expiration: int):
-    """Redis blacklist - super proste"""
     try:
         ttl = max(0, expiration - int(time.time()))
         if ttl > 0:
             redis_client.setex(f"bl:{token}", ttl, "1")
-            print(f"✅ Token blacklisted in Redis for {ttl}s")
+            print(f"Token blacklisted in Redis for {ttl}s")
             return True
     except Exception as e:
-        print(f"❌ Redis blacklist error: {e}")
+        print(f"Redis blacklist error: {e}")
         return False
 
 def is_token_blacklisted(token: str) -> bool:
-    """Redis check z debug"""
     try:
         result = redis_client.exists(f"bl:{token}") > 0
-        print(f"🔍 Checking Redis blacklist for token: {'blacklisted' if result else 'not blacklisted'}")
+        print(f"Checking Redis blacklist for token: {'blacklisted' if result else 'not blacklisted'}")
         return result
     except Exception as e:
-        print(f"❌ Redis check error: {e}")
+        print(f"Redis check error: {e}")
         return False
 
 def get_blacklist_size():
-    """Get Redis blacklist size"""
     try:
         keys = redis_client.keys("bl:*")
         return len(keys)
     except Exception as e:
-        print(f"❌ Redis count error: {e}")
+        print(f"Redis count error: {e}")
         return
 
 
@@ -102,11 +99,9 @@ async def logout(request: Request):
         if not auth_header.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid Authorization header format")
         
-        # ✅ ZAPISZ TOKEN W TYM SAMYM FORMACIE co oauth2_scheme
-        token = auth_header[7:]  # Usuń "Bearer "
+        token = auth_header[7:]  
         
-        # ✅ DODAJ DEBUG
-        print(f"🔍 Logout - token to blacklist (first 20): {token[:20]}...")
+        print(f"Logout - token to blacklist (first 20): {token[:20]}...")
         
         try:
             unverified_token = jwt.decode(
@@ -130,7 +125,7 @@ async def logout(request: Request):
 
         blacklist_token(token, expiration)
         
-        print(f"✅ Token blacklisted successfully")
+        print(f"Token blacklisted successfully")
         
         return {
             "message": "Logged out successfully",
