@@ -44,25 +44,19 @@ def blacklist_token(token: str, expiration: int):
 
 def is_token_blacklisted(token: str) -> bool:
     with blacklist_lock:
-        clean_token = token.replace('Bearer ', '') if token.startswith('Bearer ') else token
+        # ✅ NIE CZYŚĆ tokenu - oauth2_scheme już to robi
+        clean_token = token
         
-        # ✅ DODAJ DEBUG
-        print(f"🔍 Checking if token is blacklisted...")
-        print(f"🔍 Clean token (first 20 chars): {clean_token[:20]}...")
-        print(f"🔍 Blacklist size: {len(token_blacklist)}")
-        print(f"🔍 Blacklisted tokens (first 20 chars each): {[t[:20] + '...' for t in token_blacklist.keys()]}")
+        print(f"🔍 Checking blacklist for token: {clean_token[:20]}...")
+        print(f"🔍 Blacklist contains: {len(token_blacklist)} tokens")
         
         if clean_token not in token_blacklist:
-            print("✅ Token NOT in blacklist")
+            print("✅ Token NOT blacklisted")
             return False
         
         expiration = token_blacklist[clean_token]
-        current_time = time.time()
-        print(f"🔍 Token expiration: {time.ctime(expiration)}")
-        print(f"🔍 Current time: {time.ctime(current_time)}")
-        
-        if current_time > expiration:
-            print("⏰ Token expired from blacklist - removing")
+        if time.time() > expiration:
+            print("⏰ Token expired from blacklist")
             del token_blacklist[clean_token]
             return False
         
@@ -137,7 +131,12 @@ async def logout(request: Request):
         if not auth_header.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Invalid Authorization header format")
         
-        token = auth_header[7:]  
+        # ✅ ZAPISZ TOKEN W TYM SAMYM FORMACIE co oauth2_scheme
+        token = auth_header[7:]  # Usuń "Bearer "
+        
+        # ✅ DODAJ DEBUG
+        print(f"🔍 Logout - token to blacklist (first 20): {token[:20]}...")
+        
         try:
             unverified_token = jwt.decode(
                 token, 
@@ -158,7 +157,11 @@ async def logout(request: Request):
             print(f"Error parsing token for expiration: {e}")
             expiration = int(time.time()) + 3600
 
+        # ✅ BLACKLIST TOKEN (bez dodatkowego czyszczenia)
         blacklist_token(token, expiration)
+        
+        print(f"✅ Token blacklisted successfully")
+        print(f"✅ Blacklist now contains: {len(token_blacklist)} tokens")
         
         return {
             "message": "Logged out successfully",
@@ -171,8 +174,6 @@ async def logout(request: Request):
     except Exception as e:
         print(f"Logout error: {e}")
         raise HTTPException(status_code=500, detail="Logout failed")
-
-
 
 if __name__ == "__main__":
     port = int(os.getenv("APP_PORT", 5000))
