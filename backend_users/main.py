@@ -99,7 +99,7 @@ async def startup_event():
     print("Token cleanup task started")
 
 
-@app.post('/api/logout')
+@app.post('/logout')
 async def logout(request: Request):
     try:
         auth_header = request.headers.get("Authorization")
