@@ -27,18 +27,46 @@ def blacklist_token(token: str, expiration: int):
         token_blacklist[clean_token] = expiration
         print(f"Token blacklisted until: {time.ctime(expiration)}")
 
+# def is_token_blacklisted(token: str) -> bool:
+#     with blacklist_lock:
+#         clean_token = token.replace('Bearer ', '') if token.startswith('Bearer ') else token
+        
+#         if clean_token not in token_blacklist:
+#             return False
+        
+#         expiration = token_blacklist[clean_token]
+#         if time.time() > expiration:
+#             del token_blacklist[clean_token]
+#             return False
+        
+#         return True
+
+
 def is_token_blacklisted(token: str) -> bool:
     with blacklist_lock:
         clean_token = token.replace('Bearer ', '') if token.startswith('Bearer ') else token
         
+        # ✅ DODAJ DEBUG
+        print(f"🔍 Checking if token is blacklisted...")
+        print(f"🔍 Clean token (first 20 chars): {clean_token[:20]}...")
+        print(f"🔍 Blacklist size: {len(token_blacklist)}")
+        print(f"🔍 Blacklisted tokens (first 20 chars each): {[t[:20] + '...' for t in token_blacklist.keys()]}")
+        
         if clean_token not in token_blacklist:
+            print("✅ Token NOT in blacklist")
             return False
         
         expiration = token_blacklist[clean_token]
-        if time.time() > expiration:
+        current_time = time.time()
+        print(f"🔍 Token expiration: {time.ctime(expiration)}")
+        print(f"🔍 Current time: {time.ctime(current_time)}")
+        
+        if current_time > expiration:
+            print("⏰ Token expired from blacklist - removing")
             del token_blacklist[clean_token]
             return False
         
+        print("❌ Token IS BLACKLISTED")
         return True
 
 def cleanup_expired_tokens():
@@ -98,7 +126,7 @@ async def startup_event():
     asyncio.create_task(periodic_cleanup())
     print("Token cleanup task started")
 
-
+@limiter.limit("5/minute")
 @app.post('/logout')
 async def logout(request: Request):
     try:
