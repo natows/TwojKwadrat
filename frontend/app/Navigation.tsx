@@ -8,21 +8,33 @@ export default function Navigation() {
     const { keycloak, initialized } = useKeycloak();
 
    const handleLogout = async () => {  
-        try {
-            await fetch('/logout', {  
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${keycloak.token}`,
-                },
-            });
-            console.log('Token blacklisted');
-        } catch (error) {
-            console.error('Error blacklisting token:', error);
+    try {
+        console.log('🔍 Blacklisting token in Redis...');
+        
+        // ✅ JEDEN REQUEST - bezpośrednio do Redis
+        const response = await fetch('/api/blacklist-token', {  
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${keycloak.token}`,
+            },
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Token blacklisted in Redis:', data);
+        } else {
+            const error = await response.json();
+            console.error('❌ Token blacklisting failed:', error);
         }
         
-        keycloak.logout();
+    } catch (error) {
+        console.error('❌ Error blacklisting token:', error);
     }
+    
+    console.log('🔍 Proceeding to Keycloak logout...');
+    keycloak.logout();
+}
 
     const router = useRouter();
        
