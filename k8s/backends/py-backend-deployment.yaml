@@ -4,7 +4,7 @@ metadata:
   name: py-backend
   namespace: twojkwadrat
 spec:
-  replicas: 2  
+  replicas: 2
   selector:
     matchLabels:
       app: py-backend
@@ -46,6 +46,16 @@ spec:
             configMapKeyRef:
               name: keycloak-config
               key: KEYCLOAK_CLIENT_ID
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: REDIS_PORT
         - name: DB_HOST
           valueFrom:
             configMapKeyRef:

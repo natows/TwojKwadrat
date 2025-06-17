@@ -42,11 +42,19 @@ echo -e "${YELLOW}Creating persistent volumes...${NC}"
 kubectl apply -f k8s/database/mysql-pvc.yaml
 kubectl apply -f k8s/rabbitmq/rabbitmq-pvc.yaml
 kubectl apply -f k8s/keycloak/keycloak-pvc.yaml
+kubectl apply -f k8s/redis/redis-pvc.yaml
+
 
 
 echo -e "${YELLOW}Deploying MySQL...${NC}"
 kubectl apply -f k8s/database/mysql-deployment.yaml
 wait_for_deployment "mysql" "twojkwadrat" || exit 1
+
+
+echo -e "${YELLOW}Deploying Redis...${NC}"
+kubectl apply -f k8s/redis/redis-deployment.yaml
+wait_for_deployment "redis" "twojkwadrat" || exit 1
+
 
 
 echo -e "${YELLOW}Deploying RabbitMQ...${NC}"

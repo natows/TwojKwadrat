@@ -5,72 +5,53 @@ import uvicorn, os
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from routers.user import  limiter
-from threading import RLock
 import time
 from jose import jwt
 from fastapi import HTTPException
+import redis
 
-
+redis_client = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'redis'), 
+    port=int(os.getenv('REDIS_PORT', '6379')), 
+    decode_responses=True
+)
 
 
 app = FastAPI()
 
 
-token_blacklist = {}
-blacklist_lock = RLock()
-
 
 def blacklist_token(token: str, expiration: int):
-
-    with blacklist_lock:
-        clean_token = token.replace('Bearer ', '') if token.startswith('Bearer ') else token
-        token_blacklist[clean_token] = expiration
-        print(f"Token blacklisted until: {time.ctime(expiration)}")
-
-# def is_token_blacklisted(token: str) -> bool:
-#     with blacklist_lock:
-#         clean_token = token.replace('Bearer ', '') if token.startswith('Bearer ') else token
-        
-#         if clean_token not in token_blacklist:
-#             return False
-        
-#         expiration = token_blacklist[clean_token]
-#         if time.time() > expiration:
-#             del token_blacklist[clean_token]
-#             return False
-        
-#         return True
-
+    """Redis blacklist - super proste"""
+    try:
+        ttl = max(0, expiration - int(time.time()))
+        if ttl > 0:
+            redis_client.setex(f"bl:{token}", ttl, "1")
+            print(f"✅ Token blacklisted in Redis for {ttl}s")
+            return True
+    except Exception as e:
+        print(f"❌ Redis blacklist error: {e}")
+        return False
 
 def is_token_blacklisted(token: str) -> bool:
-    with blacklist_lock:
-        # ✅ NIE CZYŚĆ tokenu - oauth2_scheme już to robi
-        clean_token = token
-        
-        print(f"🔍 Checking blacklist for token: {clean_token[:20]}...")
-        print(f"🔍 Blacklist contains: {len(token_blacklist)} tokens")
-        
-        if clean_token not in token_blacklist:
-            print("✅ Token NOT blacklisted")
-            return False
-        
-        expiration = token_blacklist[clean_token]
-        if time.time() > expiration:
-            print("⏰ Token expired from blacklist")
-            del token_blacklist[clean_token]
-            return False
-        
-        print("❌ Token IS BLACKLISTED")
-        return True
+    """Redis check z debug"""
+    try:
+        result = redis_client.exists(f"bl:{token}") > 0
+        print(f"🔍 Checking Redis blacklist for token: {'blacklisted' if result else 'not blacklisted'}")
+        return result
+    except Exception as e:
+        print(f"❌ Redis check error: {e}")
+        return False
 
-def cleanup_expired_tokens():
-    with blacklist_lock:
-        current_time = time.time()
-        expired_tokens = [token for token, exp in token_blacklist.items() if current_time > exp]
-        for token in expired_tokens:
-            del token_blacklist[token]
-        if expired_tokens:
-            print(f"Cleaned up {len(expired_tokens)} expired tokens")
+def get_blacklist_size():
+    """Get Redis blacklist size"""
+    try:
+        keys = redis_client.keys("bl:*")
+        return len(keys)
+    except Exception as e:
+        print(f"❌ Redis count error: {e}")
+        return
+
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -109,16 +90,6 @@ async def health(request: Request):
 
 
 
-import asyncio
-async def periodic_cleanup():
-    while True:
-        await asyncio.sleep(3600)  
-        cleanup_expired_tokens()
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(periodic_cleanup())
-    print("Token cleanup task started")
 
 @limiter.limit("5/minute")
 @app.post('/logout')
@@ -157,16 +128,13 @@ async def logout(request: Request):
             print(f"Error parsing token for expiration: {e}")
             expiration = int(time.time()) + 3600
 
-        # ✅ BLACKLIST TOKEN (bez dodatkowego czyszczenia)
         blacklist_token(token, expiration)
         
         print(f"✅ Token blacklisted successfully")
-        print(f"✅ Blacklist now contains: {len(token_blacklist)} tokens")
         
         return {
             "message": "Logged out successfully",
             "blacklisted_until": time.ctime(expiration),
-            "active_blacklisted_tokens": len(token_blacklist)
         }
         
     except HTTPException:
