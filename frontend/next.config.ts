@@ -99,6 +99,10 @@ const nextConfig: NextConfig = {
     async rewrites() {
     return [
       {
+        source: '/logout',
+        destination: 'http://py-backend:5000/logout', 
+      },
+      {
         source: '/api/users/:id',
         destination: 'http://py-backend:5000/api/users/:id',
       },

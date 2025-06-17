@@ -6,7 +6,8 @@ from jose import jwt, JWTError
 import os
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-import requests
+
+
 
 
 limiter = Limiter(key_func=get_remote_address)
@@ -21,11 +22,22 @@ KEYCLOAK_OPENID = KeycloakOpenID(
 )
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{KEYCLOAK_SERVER_URL}realms/{KEYCLOAK_REALM}/protocol/openid-connect/token"
+    tokenUrl=f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/token"
 )
+
+
+is_token_blacklisted_func = None
+
+def set_blacklist_function(func):
+    global is_token_blacklisted_func
+    is_token_blacklisted_func = func
+    print("Blacklist function connected to user router")
 
 def verify_token(token: str = Depends(oauth2_scheme)):
     try:
+        if is_token_blacklisted_func and is_token_blacklisted_func(token):
+            raise HTTPException(status_code=401, detail="Token blacklisted - user logged out")
+        
         public_key = KEYCLOAK_OPENID.public_key()
         public_key = f"-----BEGIN PUBLIC KEY-----\n{public_key}\n-----END PUBLIC KEY-----"
 
@@ -37,9 +49,6 @@ def verify_token(token: str = Depends(oauth2_scheme)):
             options={"verify_exp": True} 
         )
 
-        if not is_keycloak_session_active(token):
-            raise HTTPException(status_code=401, detail="Keycloak session is not active")
-        
         return decoded_token
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -51,19 +60,6 @@ def verify_token(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Authentication failed")
 
 
-def is_keycloak_session_active(token: str) -> bool:
-    introspect_url = f"{KEYCLOAK_SERVER_URL}realms/{KEYCLOAK_REALM}/protocol/openid-connect/token/introspect"
-    
-    response = requests.post(introspect_url, data={
-        "token": token,
-        "client_id": KEYCLOAK_CLIENT_ID
-    })
-    
-    if response.status_code == 200:
-        result = response.json()
-        return result.get("active", False)
-    
-    return False
 
 
 def require_admin_user(token: dict = Depends(verify_token)):

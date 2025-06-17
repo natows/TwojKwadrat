@@ -8,6 +8,15 @@ export default function Navigation() {
     const { keycloak, initialized } = useKeycloak();
 
     const handleLogout = () => {
+        fetch('/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${keycloak.token}`,
+            },
+
+        }
+        )
         keycloak.logout();
     }
 
