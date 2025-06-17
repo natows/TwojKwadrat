@@ -11,7 +11,7 @@ import requests
 
 limiter = Limiter(key_func=get_remote_address)
 
-KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_URL", "http://keycloak:8080/")
+KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_URL", "http://keycloak:8080")
 KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "TwojKwadrat")
 KEYCLOAK_CLIENT_ID = os.getenv("KEYCLOAK_CLIENT_ID", "TwojKwadrat-app")
 KEYCLOAK_OPENID = KeycloakOpenID(

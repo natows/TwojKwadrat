@@ -20,7 +20,7 @@ spec:
         fsGroup: 3000
       containers:
       - name: go-backend
-        image: nowsiejko/twojkwadrat-go-backendv2:latest
+        image: nowsiejko/twojkwadrat-go-backend-cicd 
         command: ["./main"]
         ports:
         - containerPort: 5001

@@ -20,7 +20,7 @@ spec:
         fsGroup: 1000
       containers:
       - name: py-backend
-        image: nowsiejko/twojkwadrat-py-backendv3:latest
+        image: nowsiejko/twojkwadrat-py-backend-cicd
         command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]
         ports:
         - containerPort: 5000
